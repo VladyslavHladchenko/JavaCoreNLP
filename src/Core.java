@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.io.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 class Core {
@@ -111,7 +112,7 @@ class Core {
         List<String> OFalseNegative = new ArrayList<>();
         List<String> MFalseNegative = new ArrayList<>();
         List<String> PFalseNegative = new ArrayList<>();
-
+        PrintWriter wr = new PrintWriter(putStat + "FN_for_money_person.txt", "UTF-8");
 
         for(Path path : paths){
             List<Pair<String,String>> CorrectPairs = new ArrayList<>();
@@ -133,26 +134,51 @@ class Core {
             while (algo.hasNextLine()) {
                 String[] splitted = algo.nextLine().split("\t");
                 String type = splitted[1].split(" ")[0];
-
                 if (type.equals("ORGANIZATION") || type.equals("MONEY") || type.equals("PERSON"))
                     AlgoPairs.add(Pair.makePair(type, splitted[2]));
-
             }
+
+            boolean p = false;
+            Scanner s = new Scanner(new File (path.toString().substring(0,path.toString().lastIndexOf('.'))+".txt"));
 
             for (Pair<String,String> algopair : AlgoPairs )
                 if(CorrectPairs.contains(algopair)){
                     spreadToCategory(algopair,OTruePositive,MTruePositive,PTruePositive);
                     CorrectPairs.remove(algopair);
                 }
-                else {
+                else{
                     spreadToCategory(algopair,OFalsePositive,MFalsePositive,PFalsePositive);
-                    CorrectPairs.remove(algopair);
+                    if (algopair.first.equals("MONEY") || algopair.first.equals("PERSON")) {
+                        if (!p) {
+                            s.skip("Category1 Category2 Category3\n\n");
+                            wr.println( path.getFileName() );
+                            wr.println(s.nextLine());
+                            p = true;
+                        }
+                        wr.println("FP\t" + algopair.first + " " + algopair.second);
+                    }
                 }
 
-            for (Pair<String,String> leftinCorrect : CorrectPairs )
-                spreadToCategory(leftinCorrect,OFalseNegative,MFalseNegative,PFalseNegative);
-        }
 
+            for (Pair<String,String> leftinCorrect : CorrectPairs ){
+                spreadToCategory(leftinCorrect,OFalseNegative,MFalseNegative,PFalseNegative);
+                if (leftinCorrect.first.equals("MONEY") || leftinCorrect.first.equals("PERSON")){
+
+                    if(!p)
+                    {
+                        s.skip("Category1 Category2 Category3\n\n");
+                        wr.println(path.getFileName());
+                        wr.println(s.nextLine());
+                        p = true;
+                    }
+                    wr.println("FN\t" + leftinCorrect.first + " " + leftinCorrect.second);
+                }
+            }
+            if(p)
+                wr.println("");
+
+        }
+        wr.close();
         int O_TP = OTruePositive.size(), O_FP = OFalsePositive.size(), O_FN = OFalseNegative.size();
         int P_TP = PTruePositive.size(), P_FP = PFalsePositive.size(), P_FN = PFalseNegative.size();
         int M_TP = MTruePositive.size() , M_FP = MFalsePositive.size() , M_FN = MFalseNegative.size() ;
@@ -177,10 +203,10 @@ class Core {
         writer.println("Money\t\t\tTP\t" + M_TP + "\t\tFP " + M_FP + "\tFN " + M_FN + "\tF-measure " + M_Fmeasure);
 
 
-        printQuantities("\nORGANIZATION\tTP\n", OTruePositive, writer,2);
-        printQuantities("\nORGANIZATION\tFP\n", OFalsePositive, writer,2);
-        printQuantities("\nORGANIZATION\tFN\n", OFalseNegative, writer,2);
-        printQuantities("\nPERSON\tTP\n", PTruePositive, writer,2);
+        printQuantities("\nORGANIZATION\tTP\n", OTruePositive, writer);
+        printQuantities("\nORGANIZATION\tFP\n", OFalsePositive, writer);
+        printQuantities("\nORGANIZATION\tFN\n", OFalseNegative, writer);
+        printQuantities("\nPERSON\tTP\n", PTruePositive, writer);
         printQuantities("\nPERSON\tFP\n", PFalsePositive, writer);
         printQuantities("\nPERSON\tFN\n", PFalseNegative, writer);
         printQuantities("\nMONEY\tTP\n", MTruePositive, writer);
@@ -192,17 +218,20 @@ class Core {
 
     public static void main(String[] args) {
         String dir = "/home/vlad/Documents/CoreNLP/";
-        /*
-        try {
+
+        /*try {
             makeAnnotationsFromFiles(dir + "DATA/", dir + "ANNOTATIONS/");
         }
         catch( IOException e ) { System.err.println("Error when searching files"); }
-        */
+
         try {
             CalculateStatistics(dir + "DATA/" ,dir + "ANNOTATIONS/", dir);
         } catch (IOException e) {
             e.printStackTrace();
-        }
+        }*/
+        NLPtools nlp = new NLPtools();
+        nlp.makeTrainingfile(dir + "NER_DATA/eng.train.openNLP.txt",dir + "eng.train");
+
 
     }
 }
